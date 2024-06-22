@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "python-neural-network"
+version = "0.1.0"
+description = "A neural network built in python"
+authors = ["Simon Ciavarro <115393581+S1m0nCi@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
