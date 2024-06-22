@@ -5,7 +5,7 @@ class Node:
     self.weights = weights
     self.bias = bias
 
-  def feed_forward(self, inputs):
+  def compute(self, inputs: list[float]):
     if len(inputs) == len(self.weights):
       return sum([self.weights[i] * inputs[i] for i in range(len(inputs))]) + self.bias
     if len(inputs) > len(self.weights):
