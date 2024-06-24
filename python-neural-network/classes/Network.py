@@ -50,6 +50,7 @@ class Network:
       self.layer_results.append(layer_result)
       current = self.layers[i].pass_layer(self.links[i])
     layer_result = self.layers[len(self.layers)-1].compute_layer(current)
+    self.layer_results.append(layer_result)
     return layer_result
     # returns the result for the last node(s)
   
@@ -67,15 +68,16 @@ class Network:
       path.append(self.nodes[i][next_node_position])
     return path
   
+  # NOT IN USE
   def compute_node_inputs(self, initial: list): #compute node inputs that are put into activation function
     self.activation_inputs = []
     current = self.layers[0].pass_layer(initial, self.links[0])
     for i in range(1, len(self.layers)-1): # layers, not counting the input layer
-      layer_result = layer_result = self.layers[i].compute_layer(current)
+      layer_result = self.layers[i].compute_layer(current)
 
   # we need to store all of the results for all the nodes
   # we also need to save the inputs? or we can just recompute each time - recompute for now
-  def backpropagate(self):
+  def backpropagate_and_update(self, learning_rate):
     # assume 'two' structure
     L_component = dmse(self.layer_results[len(self.layer_results)-1], ACTUAL)
     self.node_changes = np.empty(self.layers) #  same shape
@@ -91,17 +93,22 @@ class Network:
         back_prop = 1
         weight_changes = []
         for k in range(1, len(path)):
-          back_prop *= dsigmoid(path[k].compute_input(path[k].inputs))*path[k].weights[path[k].inputs.index(path[k-1].output)]
+          back_prop *= dsigmoid(path[k].compute_activation_input(path[k].inputs))*path[k].weights[path[k].inputs.index(path[k-1].output)]
         for k in range(self.nodes[i][j].weights):
-          weight_changes.append(back_prop*L_component*dsigmoid(path[0].compute_input(path[0].inputs))*self.nodes[i][j].inputs[k])
+          weight_changes.append(back_prop*L_component*dsigmoid(path[0].compute_activation_input(path[0].inputs))*self.nodes[i][j].inputs[k])
         bias_change = back_prop*L_component*self.nodes[i][j]
         self.node_changes[i][j] = NodeChange(weight_changes, bias_change)
         # then backpropagate the bias as well
-          
-  
-  def update(self, learning_rate: float):
-    # update the weights and biases in accordance with the learning rate
-    pass
+        self.nodes[i][j].applyChange(self.node_changes[i][j], learning_rate)
 
-  def train(self, learning_rate: float):
-    pass
+  # now we deal with the data given to the neural network
+  # This is to be used by the developer
+  def train(self, learning_rate: float, data: list[list[float]]):
+    for i in range(len(data)):
+      self.feed_forward(data[i][:len(data[i])-1])
+      self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
+      self.backpropagate_and_update(learning_rate)
+    final_loss = self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
+    return f"final loss is {final_loss}"
+    
+

@@ -17,13 +17,18 @@ class Node:
       raise RuntimeError("Too many inputs")
     raise RuntimeError("Too few inputs")
   
-  def compute_input(self, inputs: list[float]):
+  def compute_activation_input(self, inputs: list[float]):
     if len(inputs) == len(self.weights):
       return sum([self.weights[i] * inputs[i] for i in range(len(inputs))]) + self.bias
     if len(inputs) > len(self.weights):
       raise RuntimeError("Too many inputs")
     raise RuntimeError("Too few inputs")
   
-  def update(self, weights: list[float], bias: float):
+  def updateNode(self, weights: list[float], bias: float):
     self.weights = weights
     self.bias = bias
+
+  def applyChange(self, nodeChange: NodeChange, learning_rate: float):
+    new_weights = [self.weights[i] - learning_rate*nodeChange.weights[i] for i in range(len(self.weights))]
+    new_bias = self.bias - learning_rate*nodeChange.bias
+    self.updateNode(new_weights, new_bias)

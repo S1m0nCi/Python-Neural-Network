@@ -20,6 +20,6 @@ class Layer:
     return len(self.nodes)
    
   def compute_layer_activation_inputs(self, inputs):
-    return [self.nodes[i].compute_input(inputs[i]) for i in range(len(self.nodes))]
+    return [self.nodes[i].compute_activation_input(inputs[i]) for i in range(len(self.nodes))]
 
   
