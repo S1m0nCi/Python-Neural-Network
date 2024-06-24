@@ -1,6 +1,6 @@
 
 from Node import Node
-from functions.sigmoid import sigmoid
+from functions.activation.sigmoid import sigmoid
 
 class Layer:
   def __init__(self, nodes: list[Node]):
@@ -18,4 +18,8 @@ class Layer:
 
   def length(self):
     return len(self.nodes)
+   
+  def compute_layer_activation_inputs(self, inputs):
+    return [self.nodes[i].compute_input(inputs[i]) for i in range(len(self.nodes))]
+
   
