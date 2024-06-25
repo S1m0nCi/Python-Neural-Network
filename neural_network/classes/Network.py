@@ -1,8 +1,8 @@
 import numpy as np
 
-from Node import Node
-from Layer import Layer
-from NodeChange import NodeChange
+from .Node import Node
+from .Layer import Layer
+from .NodeChange import NodeChange
 
 from ..functions.loss.mse import mse, dmse 
 from ..functions.activation.sigmoid import sigmoid, dsigmoid

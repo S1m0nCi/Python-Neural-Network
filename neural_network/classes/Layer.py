@@ -1,5 +1,5 @@
 
-from Node import Node
+from .Node import Node
 from ..functions.activation.sigmoid import sigmoid
 
 class Layer:

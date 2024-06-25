@@ -1,13 +1,13 @@
 import numpy as np
 
-from NodeChange import NodeChange
+from .NodeChange import NodeChange
 
 class Node:
   def __init__(self, weights: list[float], bias: float):
     self.weights = weights
     self.bias = bias
 
-  def compute(self, inputs: list[float], activation: function):
+  def compute(self, inputs: list[float], activation):
     self.inputs = inputs
     if len(inputs) == len(self.weights):
       output = activation(sum([self.weights[i] * inputs[i] for i in range(len(inputs))]) + self.bias)
