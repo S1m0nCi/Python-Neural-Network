@@ -1,6 +1,6 @@
 
 from Node import Node
-from functions.activation.sigmoid import sigmoid
+from ..functions.activation.sigmoid import sigmoid
 
 class Layer:
   def __init__(self, nodes: list[Node]):
