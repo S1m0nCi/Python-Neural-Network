@@ -1,1 +1,1 @@
-from . import classes, test, functions
+from . import classes, tests, functions

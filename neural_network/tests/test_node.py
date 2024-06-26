@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 
-from ..classes.Node import Node
-from ..functions.activation.sigmoid import sigmoid
+from neural_network.classes.Node import Node
+from neural_network.functions.activation.sigmoid import sigmoid
 
 class testNodeMethods(unittest.TestCase):
 
