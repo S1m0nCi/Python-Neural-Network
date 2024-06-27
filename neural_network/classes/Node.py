@@ -32,3 +32,9 @@ class Node:
     new_weights = [self.weights[i] - learning_rate*nodeChange.weights[i] for i in range(len(self.weights))]
     new_bias = self.bias - learning_rate*nodeChange.bias
     self.updateNode(new_weights, new_bias)
+
+  def __repr__(self):
+    if len(self.weights) > 1:
+      return f" Weights: {self.weights} \n Bias: {self.bias}"
+    return f" Weight: {self.weights} \n Bias: {self.bias}"
+    

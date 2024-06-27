@@ -43,14 +43,15 @@ class Network:
   def feed_forward(self, initial: list):
     self.layer_results = []                                                                                                                                                                  
     # create the first input moulding to the input layer
-    current = self.layers[0].pass_layer(initial, self.links[0])
+    self.layers[0].result = initial
+    current = self.layers[0].pass_layer(self.links[0])
     for i in range(1, len(self.layers)-1):
-      layer_result = self.layers[i].compute_layer(current)
-      self.layer_results.append(layer_result)
+      self.layers[i].compute_layer(current)
+      self.layer_results.append(self.layers[i].result)
       current = self.layers[i].pass_layer(self.links[i])
-    layer_result = self.layers[len(self.layers)-1].compute_layer(current)
-    self.layer_results.append(layer_result)
-    return layer_result
+    self.layers[len(self.layers)-1].compute_layer(current)
+    self.layer_results.append(self.layers[len(self.layers)-1].result)
+    return self.layers[len(self.layers)-1].result
     # returns the result for the last node(s)
   
   def calculate_loss(self, layer_result, actual_result):

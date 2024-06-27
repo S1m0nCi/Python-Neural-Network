@@ -10,6 +10,9 @@ python = "^3.12"
 numpy = "^2.0.0"
 
 
+[tool.poetry.group.dev.dependencies]
+make = "^0.1.6.post2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
