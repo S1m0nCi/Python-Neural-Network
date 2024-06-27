@@ -35,6 +35,6 @@ class Node:
 
   def __repr__(self):
     if len(self.weights) > 1:
-      return f" Weights: {self.weights} \n Bias: {self.bias}"
-    return f" Weight: {self.weights} \n Bias: {self.bias}"
+      return f" Weights: {self.weights} Bias: {self.bias}"
+    return f" Weight: {self.weights} Bias: {self.bias}"
     

@@ -6,6 +6,7 @@ from .NodeChange import NodeChange
 
 from ..functions.loss.mse import mse, dmse 
 from ..functions.activation.sigmoid import sigmoid, dsigmoid
+from ..functions.utils import floatify
 
 ACTUAL = 0
 
@@ -23,7 +24,7 @@ class Network:
                links: list[list[list[int]]]=[[[0,1], [0,1]], [[0], [0]]] # first layer is input layer
                ):
     # the 2 below is specific to the 'two' option
-    self.nodes = [[Node(np.ones(2).tolist(), 0) for i in range(len(layers[j]))] for j in range(len(layers))]
+    self.nodes = [[Node(np.ones(2).tolist(), 0) for i in range(layers[j])] for j in range(len(layers))]
     self.layers = [Layer(self.nodes[i]) for i in range(len(self.nodes))]
     self.layer_results = []
     # the links between layers should be below
@@ -41,14 +42,15 @@ class Network:
   # can we use recursion?
   # repeatedly compute layer to get the final output
   def feed_forward(self, initial: list):
+    initial = floatify(initial)
     self.layer_results = []                                                                                                                                                                  
     # create the first input moulding to the input layer
     self.layers[0].result = initial
-    current = self.layers[0].pass_layer(self.links[0])
+    current = self.layers[0].pass_layer(self.links[0], self.layers[1].length())
     for i in range(1, len(self.layers)-1):
       self.layers[i].compute_layer(current)
       self.layer_results.append(self.layers[i].result)
-      current = self.layers[i].pass_layer(self.links[i])
+      current = self.layers[i].pass_layer(self.links[i], self.layers[i+1].length())
     self.layers[len(self.layers)-1].compute_layer(current)
     self.layer_results.append(self.layers[len(self.layers)-1].result)
     return self.layers[len(self.layers)-1].result
@@ -110,5 +112,18 @@ class Network:
       self.backpropagate_and_update(learning_rate)
     final_loss = self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
     return f"final loss is {final_loss}"
+
+  # To give a visual on the neural network, and also to help with debugging:
+  def __str__(self):
+    neural_rows = []
+    for line in self.nodes:
+      last_line_length = 0
+      for node in line:
+        neural_rows.append(f"***|{node}|***")
+        last_line_length += len(f"***|{node}|***")
+      neural_rows.append("\n")
+      neural_rows.append("*" * last_line_length)
+      neural_rows.append("\n")
+    return "".join(neural_rows)
     
 
