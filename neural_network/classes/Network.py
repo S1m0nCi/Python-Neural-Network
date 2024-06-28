@@ -11,20 +11,17 @@ from ..functions.utils import floatify
 ACTUAL = 0
 
 class Network:
-  # each layer should be a list of nodes
-  # how do we work out how the nodes are connected
-  # maybe we should leave this to personalisation ie to the user's choice: give the user fine-tune control
   # we can also have different options for connections, like 'dense', '2', etc
   # layers includes input layer and output layers
   def __init__(self,
                layers: list[int]= [2,2,1],
+               node_struct: list[list[int]] = [np.ones(2).tolist(), 0],
                connection: str = "two", 
                activation: str = "sigmoid", 
                loss: str = "mean square error", 
                links: list[list[list[int]]]=[[[0,1], [0,1]], [[0], [0]]], # first layer is input layer
-               ):
-    # the 2 below is specific to the 'two' option
-    self.nodes = [[Node(np.ones(2).tolist(), 0) for i in range(layers[j])] for j in range(len(layers))]
+               ):    
+    self.nodes = [[Node(node_struct[0], node_struct[1]) for i in range(layers[j])] for j in range(len(layers))]
     self.layers = [Layer(self.nodes[i]) for i in range(len(self.nodes))]
     self.layer_results = []
     # the links between layers should be below
@@ -116,11 +113,19 @@ class Network:
     final_loss = self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
     return f"final loss is {final_loss}"
   
+  # Internal use only:
   def set_nodes(self, nodes):
     self.nodes = nodes
     self.layers = [Layer(self.nodes[i]) for i in range(len(self.nodes))]
     print (self)
 
+  def set_structure(self, nodes, links):
+    self.set_nodes(nodes)
+    self.change_links(links)
+
+  def change_links(self, links):
+    self.links = links
+    
   # To give a visual on the neural network, and also to help with debugging:
   def __str__(self):
     neural_rows = []

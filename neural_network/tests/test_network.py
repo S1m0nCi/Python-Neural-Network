@@ -18,6 +18,12 @@ class testNetwork(unittest.TestCase):
       final_result = network.feed_forward([2, 3])[0]
       self.assertAlmostEqual(final_result, 0.7216, places=4)
 
+    with self.subTest("2-1 feed forward"):
+      network = Network(layers=[8,4,2,1])
+      final_result = network.feed_forward([0, 1, 0, 1])[0]
+      print (final_result)
+      
+
 
 if __name__ == "__main__":
   unittest.main()
