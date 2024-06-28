@@ -21,7 +21,7 @@ class Network:
                connection: str = "two", 
                activation: str = "sigmoid", 
                loss: str = "mean square error", 
-               links: list[list[list[int]]]=[[[0,1], [0,1]], [[0], [0]]] # first layer is input layer
+               links: list[list[list[int]]]=[[[0,1], [0,1]], [[0], [0]]], # first layer is input layer
                ):
     # the 2 below is specific to the 'two' option
     self.nodes = [[Node(np.ones(2).tolist(), 0) for i in range(layers[j])] for j in range(len(layers))]
@@ -47,13 +47,16 @@ class Network:
     # create the first input moulding to the input layer
     self.layers[0].result = initial
     current = self.layers[0].pass_layer(self.links[0], self.layers[1].length())
+    print (f"current {current}")
     for i in range(1, len(self.layers)-1):
       self.layers[i].compute_layer(current)
       self.layer_results.append(self.layers[i].result)
       current = self.layers[i].pass_layer(self.links[i], self.layers[i+1].length())
+      print (f"current {current}")
     self.layers[len(self.layers)-1].compute_layer(current)
-    self.layer_results.append(self.layers[len(self.layers)-1].result)
-    return self.layers[len(self.layers)-1].result
+    self.final_output = self.layers[len(self.layers)-1].result
+    self.layer_results.append(self.final_output)
+    return self.final_output
     # returns the result for the last node(s)
   
   def calculate_loss(self, layer_result, actual_result):
@@ -112,6 +115,11 @@ class Network:
       self.backpropagate_and_update(learning_rate)
     final_loss = self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
     return f"final loss is {final_loss}"
+  
+  def set_nodes(self, nodes):
+    self.nodes = nodes
+    self.layers = [Layer(self.nodes[i]) for i in range(len(self.nodes))]
+    print (self)
 
   # To give a visual on the neural network, and also to help with debugging:
   def __str__(self):

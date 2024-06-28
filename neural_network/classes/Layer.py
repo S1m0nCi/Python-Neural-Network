@@ -7,7 +7,7 @@ class Layer:
   def __init__(self, nodes: list[Node]):
     self.nodes = nodes
   
-  # unsure about below
+  # we could use a np.exp here as a form of the function to speed up the computation.
   def compute_layer(self, inputs: list[list[float]]):
     self.result = [self.nodes[i].compute(inputs[i], sigmoid) for i in range(len(self.nodes))]
     return self.result
@@ -20,7 +20,7 @@ class Layer:
     next_layer_input = np.empty((next_layer_len, 0)).tolist() # needs to be a list of lists
     for j in range(len(link)):
       for i in range(len(link[j])):
-        next_layer_input[link[j][i]].append(self.result[i])
+        next_layer_input[link[j][i]].append(self.result[j])
     return next_layer_input
     # now an issue is, are we getting the right order? are the new inputs matching to the right weights? maybe doesn't even matter actually:
     # as long as the order stays the same throughout training

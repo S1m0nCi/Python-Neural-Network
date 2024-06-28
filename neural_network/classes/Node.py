@@ -10,13 +10,15 @@ class Node:
   def compute(self, inputs: list[float], activation):
     self.inputs = inputs
     if len(inputs) == len(self.weights):
+      print (f"put into activation {sum([self.weights[i] * inputs[i] for i in range(len(inputs))]) + self.bias}")
       output = activation(sum([self.weights[i] * inputs[i] for i in range(len(inputs))]) + self.bias)
-      self.output = output
+      print (f"output {output}")
       return output
     if len(inputs) > len(self.weights):
       raise RuntimeError("Too many inputs")
     raise RuntimeError("Too few inputs")
   
+  # maybe should remove: 
   def compute_activation_input(self, inputs: list[float]):
     if len(inputs) == len(self.weights):
       return sum([self.weights[i] * inputs[i] for i in range(len(inputs))]) + self.bias
