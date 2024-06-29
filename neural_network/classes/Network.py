@@ -3,10 +3,11 @@ import numpy as np
 from .Node import Node
 from .Layer import Layer
 from .NodeChange import NodeChange
+from .Path import Path
 
 from ..functions.loss.mse import mse, dmse 
 from ..functions.activation.sigmoid import sigmoid, dsigmoid
-from ..functions.utils import floatify
+from ..functions.utils import floatify, form_zeros_array
 
 ACTUAL = 0
 
@@ -21,6 +22,7 @@ class Network:
                loss: str = "mean square error", 
                links: list[list[list[int]]]=[[[0,1], [0,1]], [[0], [0]]], # first layer is input layer
                ):    
+    self.shape = layers
     self.nodes = [[Node(node_struct[0], node_struct[1]) for i in range(layers[j])] for j in range(len(layers))]
     self.layers = [Layer(self.nodes[i]) for i in range(len(self.nodes))]
     self.layer_results = []
@@ -32,12 +34,6 @@ class Network:
     self.activation = activation
     self.loss = loss
   
-  # for now, we will define all functions using the default settings, just for now
-  # then we will make a 'train' function bringing everything together
-  # start by computing for the input layer
-
-  # can we use recursion?
-  # repeatedly compute layer to get the final output
   def feed_forward(self, initial: list):
     initial = floatify(initial)
     self.layer_results = []                                                                                                                                                                  
@@ -54,22 +50,50 @@ class Network:
     self.final_output = self.layers[len(self.layers)-1].result
     self.layer_results.append(self.final_output)
     return self.final_output
-    # returns the result for the last node(s)
   
   def calculate_loss(self, layer_result, actual_result):
-    # assuming just one node in the output layer
-    # using MSE loss
     return mse(layer_result, actual_result)
   
-  # assuming 'two'
+  # this works as a general function to find the path
   def map_path(self, layer_index: int, node_index: int):
-    path = [self.nodes[layer_index][node_index]]
+    # path has the form of a self.nodes, with the path arranged in layers
+    # this function maybe should be recursive. We map the path for each node as we go
+    path = [[self.nodes[layer_index][node_index]]]
     current_node_index = node_index
     for i in range(layer_index+1, len(self.layers)):
-      next_node_position = self.links[i-1][current_node_index]
-      path.append(self.nodes[i][next_node_position])
+      next_node_position = self.links[i-1][current_node_index] # will be a list: can be a list of multiple indices
+      path.append([self.nodes[i][next_node_position[j]] for j in range(len(next_node_position))])
     return path
   
+  def map_paths_recursive(self, layer_index: int, node_index: int, stored_paths: list[list[Path]]):
+    path = [[self.nodes[layer_index][node_index]]]
+    current_node_index = node_index
+    # we do not need a for loop, we need recursion
+    # we may need a list of lists similar to self.nodes, but where each node is our path, as a memoisation tool
+    # the path is like a tree
+    if layer_index == len(self.layers) - 1:
+      stored_paths[layer_index][node_index] = Path([path])
+      return path
+    next_node_positions = self.links[layer_index][current_node_index]
+    next_path_layer = []
+    for index in next_node_positions:
+      if stored_paths[layer_index+1][index] != 0:
+        next_path_layer.append(stored_paths[layer_index+1][index])
+      else:
+        next_path_layer.append(self.map_paths_recursive(layer_index+1, index))
+    path.append(next_path_layer)
+    stored_paths[layer_index][node_index] = Path([path])
+    return stored_paths
+    
+
+  def map_all_paths(self):
+    # all_paths should have the same shape as self.nodes
+    all_paths = form_zeros_array(self.shape)
+    for i in range(len(self.nodes[0])):
+      all_paths = self.map_paths_recursive(0, i, all_paths) #  maybe don't append, do something else instead
+    return all_paths
+
+
   # NOT IN USE
   def compute_node_inputs(self, initial: list): #compute node inputs that are put into activation function
     self.activation_inputs = []
