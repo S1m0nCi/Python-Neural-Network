@@ -5,7 +5,7 @@ from .Layer import Layer
 from .NodeChange import NodeChange
 from .Path import Path
 
-from ..functions.loss.mse import mse, dmse 
+from ..functions.loss.mse import mse, dmse, dmse1 
 from ..functions.activation.sigmoid import sigmoid, dsigmoid
 from ..functions.utils import floatify, form_zeros_array
 
@@ -106,7 +106,7 @@ class Network:
   def backpropagate_and_update(self, learning_rate):
     # assume 'two' structure
     L_component = dmse(self.layer_results[len(self.layer_results)-1], ACTUAL)
-    self.node_changes = np.empty(self.layers) #  same shape
+    self.node_changes = form_zeros_array(self.shape) #  same shape
     # calculate the necessary partial derivatives for all weights and biases
     # if we just do this for one weight or bias we can just repeat: this is not difficult, after all.
     # first find all the partial derivatives and put them in a list which matches the list of nodes, self.nodes
@@ -126,6 +126,31 @@ class Network:
         self.node_changes[i][j] = NodeChange(weight_changes, bias_change)
         # then backpropagate the bias as well
         self.nodes[i][j].applyChange(self.node_changes[i][j], learning_rate)
+
+  def general_backpropagate(self, learning_rate, correct_output):
+    # there should be only one loss function for the output layer that we minimise
+    loss = self.calculate_loss(self.layer_results[::-1][0], correct_output)
+    print (f"Loss: {loss}")
+    L_components = [dmse(self.layer_results[::-1][0], correct_output, i) for i in range(self.shape[::-1][0])]
+    self.paths = self.map_all_paths()
+    # we need to know what leads to the next layer. We may now need to use the chain rule forwards through the network
+    # we will need another function
+    for i in range(1, len(self.nodes)): # layers, not counting the input layer
+      for j in range(len(self.nodes[i])): # nodes
+        root_path = self.paths[i][j]
+  
+
+  def sigmoid_chain(self, i, j, root_path):
+    # i denotes layer
+    # j denotes node index in layer
+    # write the self.nodes[i][j] as a product/sum of the derivatives that were before it
+    depends_on = []
+    # check layer before:
+    for k in range(len(root_path[i-1])):
+      if j in self.paths[i-1][root_path[i-1][k]].get_path()[i]:
+        depends_on.append(j) # we know the layer is i-1
+                                                                                        
+
 
   # now we deal with the data given to the neural network
   # This is to be used by the developer

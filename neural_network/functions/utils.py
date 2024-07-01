@@ -9,4 +9,8 @@ def form_zeros_array(shape_lst):
   output_lst = []
   for i in range(shape_lst):
     output_lst.append(np.zeros(shape_lst[i]).tolist())
+
+# multivariate chain rule function
+def chain_rule(funct, variables):
+  pass
   

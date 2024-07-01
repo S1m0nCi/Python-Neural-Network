@@ -4,3 +4,6 @@ def mse(estimated: list, actual: list):
 
 def dmse(estimated: list, actual: list, index: int):
   return 2*(estimated[index] - actual[index])/len(estimated)
+
+def dmse1(estimated: float, actual: float):
+  return 2*(estimated - actual)
