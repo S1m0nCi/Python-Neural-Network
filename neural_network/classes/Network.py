@@ -23,7 +23,7 @@ class Network:
                links: list[list[list[int]]]=[[[0,1], [0,1]], [[0], [0]]], # first layer is input layer
                ):    
     self.shape = layers
-    self.nodes = [[Node(node_struct[0], node_struct[1]) for i in range(layers[j])] for j in range(len(layers))]
+    self.nodes = [[Node(node_struct[0], node_struct[1], [j,i]) for i in range(layers[j])] for j in range(len(layers))]
     self.layers = [Layer(self.nodes[i]) for i in range(len(self.nodes))]
     self.layer_results = []
     # the links between layers should be below
@@ -131,24 +131,89 @@ class Network:
     # there should be only one loss function for the output layer that we minimise
     loss = self.calculate_loss(self.layer_results[::-1][0], correct_output)
     print (f"Loss: {loss}")
+
+    self.node_changes = form_zeros_array(self.shape) 
     L_components = [dmse(self.layer_results[::-1][0], correct_output, i) for i in range(self.shape[::-1][0])]
     self.paths = self.map_all_paths()
     # we need to know what leads to the next layer. We may now need to use the chain rule forwards through the network
     # we will need another function
+    # we use NodeChanges to store everything
     for i in range(1, len(self.nodes)): # layers, not counting the input layer
       for j in range(len(self.nodes[i])): # nodes
         root_path = self.paths[i][j]
-  
+        # call the sig chain functions to start from the output layer.
+        # 1. which output nodes does this lead to, ie affect the loss function?
+        leads_to_output_nodes = [path.get_path()[0].position[1] for path in root_path[::-1][0]]
+        memo = form_zeros_array([len(lst) for lst in root_path])
+        weight_output_derivs = [
+          [self.sigmoid_chain_w(len(self.shape)-1, m, root_path, memo, k) for m in leads_to_output_nodes]
+          for k in range(len(self.nodes[i][j].weights))
+        ]
+        bias__output_deriv = [self.sigmoid_chain_b(len(self.shape)-1, m, root_path, memo) for m in leads_to_output_nodes]
+        weight_loss_derivs = [
+          L_components[leads_to_output_nodes[k]]*weight_output_derivs[m][k] for k in range(len(leads_to_output_nodes))
+          for m in range(len(weight_output_derivs))
+                              ]
+        bias_loss_deriv = [L_components[leads_to_output_nodes[k]]*bias__output_deriv[k] for k in range(len(leads_to_output_nodes))]
+        self.node_changes[i][j] = NodeChange(weight_loss_derivs, bias_loss_deriv)
+        self.nodes[i][j].applyChange(self.node_changes[i][j], learning_rate)
 
-  def sigmoid_chain(self, i, j, root_path):
+
+#*****************
+# L COMPONENTS!!!!!!!!!!!!
+# *****************  
+  
+  # make this function also recursive
+  # may need memoisation in a 'self' as we will call this function multiple times: no: the memoisation will be specific to each path
+  def sigmoid_chain_w(self, i, j, root_path, path_memo, weight_index):
     # i denotes layer
     # j denotes node index in layer
     # write the self.nodes[i][j] as a product/sum of the derivatives that were before it
+    if i == len(self.shape) - len(root_path):
+      return dsigmoid(self.nodes[i][j].activation_input)*self.nodes[i][j].inputs[weight_index]
     depends_on = []
     # check layer before:
     for k in range(len(root_path[i-1])):
       if j in self.paths[i-1][root_path[i-1][k]].get_path()[i]:
-        depends_on.append(j) # we know the layer is i-1
+        depends_on.append(k) # we know the layer is i-1
+    # form list of dsigmoids: forming a list allows for easier memoisation implementation later if needed
+    depends_on_ds = [
+      dsigmoid(self.nodes[i-1][depends_on[k]].activation_input)*self.nodes[i-1][depends_on[k]].weights[k] for k in range(len(depends_on))
+    ]
+    # form a list of the unknown (or memoised) weight partial derivatives
+    depends_on_w = []
+    for k in range(len(depends_on)): # we are not looking for the actual index
+      if path_memo[i-1][k] != 0:
+        depends_on_w.append(path_memo[i-1][k])
+      else:
+        depends_on_w.append(self.sigmoid_chain_w(i-1, depends_on[k], self.paths[i-1][depends_on[k]], path_memo, weight_index))
+    return sum([depends_on_ds[k]*depends_on_w[k] for k in range(len(depends_on))])
+
+
+  # Create the same, but for a bias instead of a weight: that will be the base case
+  def sigmoid_chain_b(self, i, j, root_path, path_memo):
+    # i denotes layer
+    # j denotes node index in layer
+    # write the self.nodes[i][j] as a product/sum of the derivatives that were before it
+    if i == len(self.shape) - len(root_path):
+      return dsigmoid(self.nodes[i][j].activation_input)
+    depends_on = []
+    # check layer before:
+    for k in range(len(root_path[i-1])):
+      if j in self.paths[i-1][root_path[i-1][k]].get_path()[i]:
+        depends_on.append(k) # we know the layer is i-1
+    # form list of dsigmoids: forming a list allows for easier memoisation implementation later if needed
+    depends_on_ds = [
+      dsigmoid(self.nodes[i-1][depends_on[k]].activation_input)*self.nodes[i-1][depends_on[k]].weights[k] for k in range(len(depends_on))
+    ]
+    # form a list of the unknown (or memoised) weight partial derivatives
+    depends_on_w = []
+    for k in range(len(depends_on)): # we are not looking for the actual index
+      if path_memo[i-1][k] != 0:
+        depends_on_w.append(path_memo[i-1][k])
+      else:
+        depends_on_w.append(self.sigmoid_chain_b(i-1, depends_on[k], self.paths[i-1][depends_on[k]], path_memo))
+    return sum([depends_on_ds[k]*depends_on_w[k] for k in range(len(depends_on))])
                                                                                         
 
 
