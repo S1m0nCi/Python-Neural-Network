@@ -7,10 +7,8 @@ def floatify(lst):
 # makes an zeros array (list of lists) that fits a shape with non-constant 'width'
 def form_zeros_array(shape_lst):
   output_lst = []
-  for i in range(shape_lst):
+  for i in range(len(shape_lst)):
     output_lst.append(np.zeros(shape_lst[i]).tolist())
+  return output_lst
 
-# multivariate chain rule function
-def chain_rule(funct, variables):
-  pass
   

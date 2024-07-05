@@ -26,9 +26,7 @@ class Network:
     self.nodes = [[Node(node_struct[0], node_struct[1], [j,i]) for i in range(layers[j])] for j in range(len(layers))]
     self.layers = [Layer(self.nodes[i]) for i in range(len(self.nodes))]
     self.layer_results = []
-    # the links between layers should be below
-    # for now, have simple halving links
-    # the output of each layer will go to a layer with half as many nodes
+    
     self.links = links
     self.connection = connection
     self.activation = activation
@@ -73,14 +71,14 @@ class Network:
     # the path is like a tree
     if layer_index == len(self.layers) - 1:
       stored_paths[layer_index][node_index] = Path([path])
-      return path
+      return stored_paths
     next_node_positions = self.links[layer_index][current_node_index]
     next_path_layer = []
     for index in next_node_positions:
       if stored_paths[layer_index+1][index] != 0:
-        next_path_layer.append(stored_paths[layer_index+1][index])
+        next_path_layer.append(stored_paths[layer_index+1][index].get_path())
       else:
-        next_path_layer.append(self.map_paths_recursive(layer_index+1, index))
+        next_path_layer.append(self.map_paths_recursive(layer_index+1, index, stored_paths)[layer_index+1][index].get_path())
     path.append(next_path_layer)
     stored_paths[layer_index][node_index] = Path([path])
     return stored_paths
@@ -101,16 +99,10 @@ class Network:
     for i in range(1, len(self.layers)-1): # layers, not counting the input layer
       layer_result = self.layers[i].compute_layer(current)
 
-  # we need to store all of the results for all the nodes
-  # we also need to save the inputs? or we can just recompute each time - recompute for now
   def backpropagate_and_update(self, learning_rate):
-    # assume 'two' structure
+    # assumes 'two' structure
     L_component = dmse(self.layer_results[len(self.layer_results)-1], ACTUAL)
     self.node_changes = form_zeros_array(self.shape) #  same shape
-    # calculate the necessary partial derivatives for all weights and biases
-    # if we just do this for one weight or bias we can just repeat: this is not difficult, after all.
-    # first find all the partial derivatives and put them in a list which matches the list of nodes, self.nodes
-    # a list(network) of lists(layers): inside each list we could have a new kind of class, or just a weight, weight, bias list again 
     for i in range(1, len(self.nodes)): # layers, not counting the input layer
       for j in range(len(self.nodes[i])): # nodes
         path = self.map_path(i, j)
@@ -135,15 +127,11 @@ class Network:
     self.node_changes = form_zeros_array(self.shape) 
     L_components = [dmse(self.layer_results[::-1][0], correct_output, i) for i in range(self.shape[::-1][0])]
     self.paths = self.map_all_paths()
-    # we need to know what leads to the next layer. We may now need to use the chain rule forwards through the network
-    # we will need another function
-    # we use NodeChanges to store everything
     for i in range(1, len(self.nodes)): # layers, not counting the input layer
       for j in range(len(self.nodes[i])): # nodes
         root_path = self.paths[i][j]
-        # call the sig chain functions to start from the output layer.
-        # 1. which output nodes does this lead to, ie affect the loss function?
-        leads_to_output_nodes = [path.get_path()[0].position[1] for path in root_path[::-1][0]]
+        # call the sig chain functions to start from the output layer
+        leads_to_output_nodes = [path[0].position[1] for path in root_path.get_path()[::-1][0]]
         memo = form_zeros_array([len(lst) for lst in root_path])
         weight_output_derivs = [
           [self.sigmoid_chain_w(len(self.shape)-1, m, root_path, memo, k) for m in leads_to_output_nodes]
@@ -157,14 +145,7 @@ class Network:
         bias_loss_deriv = [L_components[leads_to_output_nodes[k]]*bias__output_deriv[k] for k in range(len(leads_to_output_nodes))]
         self.node_changes[i][j] = NodeChange(weight_loss_derivs, bias_loss_deriv)
         self.nodes[i][j].applyChange(self.node_changes[i][j], learning_rate)
-
-
-#*****************
-# L COMPONENTS!!!!!!!!!!!!
-# *****************  
   
-  # make this function also recursive
-  # may need memoisation in a 'self' as we will call this function multiple times: no: the memoisation will be specific to each path
   def sigmoid_chain_w(self, i, j, root_path, path_memo, weight_index):
     # i denotes layer
     # j denotes node index in layer
@@ -189,12 +170,9 @@ class Network:
         depends_on_w.append(self.sigmoid_chain_w(i-1, depends_on[k], self.paths[i-1][depends_on[k]], path_memo, weight_index))
     return sum([depends_on_ds[k]*depends_on_w[k] for k in range(len(depends_on))])
 
-
-  # Create the same, but for a bias instead of a weight: that will be the base case
   def sigmoid_chain_b(self, i, j, root_path, path_memo):
     # i denotes layer
     # j denotes node index in layer
-    # write the self.nodes[i][j] as a product/sum of the derivatives that were before it
     if i == len(self.shape) - len(root_path):
       return dsigmoid(self.nodes[i][j].activation_input)
     depends_on = []
@@ -225,6 +203,16 @@ class Network:
       self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
       self.backpropagate_and_update(learning_rate)
     final_loss = self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
+    return f"final loss is {final_loss}"
+  
+  def train_network(self, learning_rate:float, data: list[list[float]], output_columns: list[int]):
+    output_targets = [[data[i][output_column] for output_column in output_columns] for i in range(len(data))]
+    for i in range(len(data)):
+      self.feed_forward(data[i][:len(data[i])-1])
+      output_target = output_targets[i]
+      self.calculate_loss(self.layer_results[::-1][0], output_target)
+      self.general_backpropagate(learning_rate, output_target)
+    final_loss = self.calculate_loss(self.layer_results[::-1][0], output_targets[::-1][0])
     return f"final loss is {final_loss}"
   
   # Internal use only:
