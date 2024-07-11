@@ -83,6 +83,35 @@ class Network:
     stored_paths[layer_index][node_index] = Path([path])
     return stored_paths
     
+  def create_paths(self):
+    all_paths = form_zeros_array(self.shape)
+    for i in range(len(self.nodes)):
+      for j in range(len(self.nodes[i])):
+        all_paths[i][j] = self.map_path(i, j) 
+    return all_paths
+  
+  def update(self, learning_rate, correct_output):
+    L_components = [dmse(self.layer_results[::-1][0], correct_output, i) for i in range(self.shape[::-1][0])]
+    self.node_changes = form_zeros_array(self.shape)
+    self.paths = self.create_paths()
+    for i in range(len(self.nodes)):
+      for j in range(len(self.nodes[i])):
+        root_path = self.paths[i][j]
+        memo = form_zeros_array([len(lst) for lst in root_path])
+        leads_to_output_nodes = root_path[::-1][0]
+        weight_output_derivs = [
+          [self.sigmoid_chain_w(len(self.shape)-1, m.position[1], root_path, memo, k) for m in leads_to_output_nodes]
+          for k in range(len(self.nodes[i][j].weights))
+        ]
+        bias_output_deriv = [self.sigmoid_chain_b(len(self.shape)-1, m.position[1], root_path, memo) for m in leads_to_output_nodes]
+        weight_loss_derivs = [
+          L_components[leads_to_output_nodes[k].position[1]]*weight_output_derivs[m][k] for k in range(len(leads_to_output_nodes))
+          for m in range(len(weight_output_derivs))
+                              ]
+        bias_loss_deriv = sum([L_components[leads_to_output_nodes[k].position[1]]*bias_output_deriv[k] for k in range(len(leads_to_output_nodes))])
+        self.node_changes[i][j] = NodeChange(weight_loss_derivs, bias_loss_deriv)
+        self.nodes[i][j].applyChange(self.node_changes[i][j], learning_rate)
+
 
   def map_all_paths(self):
     # all_paths should have the same shape as self.nodes
@@ -90,7 +119,7 @@ class Network:
     for i in range(len(self.nodes[0])):
       all_paths = self.map_paths_recursive(0, i, all_paths) #  maybe don't append, do something else instead
     return all_paths
-
+  
 
   # NOT IN USE
   def compute_node_inputs(self, initial: list): #compute node inputs that are put into activation function
@@ -137,12 +166,12 @@ class Network:
           [self.sigmoid_chain_w(len(self.shape)-1, m, root_path, memo, k) for m in leads_to_output_nodes]
           for k in range(len(self.nodes[i][j].weights))
         ]
-        bias__output_deriv = [self.sigmoid_chain_b(len(self.shape)-1, m, root_path, memo) for m in leads_to_output_nodes]
+        bias_output_deriv = [self.sigmoid_chain_b(len(self.shape)-1, m, root_path, memo) for m in leads_to_output_nodes]
         weight_loss_derivs = [
           L_components[leads_to_output_nodes[k]]*weight_output_derivs[m][k] for k in range(len(leads_to_output_nodes))
           for m in range(len(weight_output_derivs))
                               ]
-        bias_loss_deriv = [L_components[leads_to_output_nodes[k]]*bias__output_deriv[k] for k in range(len(leads_to_output_nodes))]
+        bias_loss_deriv = [L_components[leads_to_output_nodes[k]]*bias_output_deriv[k] for k in range(len(leads_to_output_nodes))]
         self.node_changes[i][j] = NodeChange(weight_loss_derivs, bias_loss_deriv)
         self.nodes[i][j].applyChange(self.node_changes[i][j], learning_rate)
   
@@ -155,7 +184,7 @@ class Network:
     depends_on = []
     # check layer before:
     for k in range(len(root_path[i-1])):
-      if j in self.paths[i-1][root_path[i-1][k]].get_path()[i]:
+      if self.nodes[i][j] in self.paths[i-1][root_path[i-1][k].position[1]]:
         depends_on.append(k) # we know the layer is i-1
     # form list of dsigmoids: forming a list allows for easier memoisation implementation later if needed
     depends_on_ds = [
@@ -178,7 +207,7 @@ class Network:
     depends_on = []
     # check layer before:
     for k in range(len(root_path[i-1])):
-      if j in self.paths[i-1][root_path[i-1][k]].get_path()[i]:
+      if j in self.paths[i-1][root_path[i-1][k].position[1]]:
         depends_on.append(k) # we know the layer is i-1
     # form list of dsigmoids: forming a list allows for easier memoisation implementation later if needed
     depends_on_ds = [
@@ -197,14 +226,26 @@ class Network:
 
   # now we deal with the data given to the neural network
   # This is to be used by the developer
-  def train(self, learning_rate: float, data: list[list[float]]):
+  def train(self, learning_rate: float, data: list[list[float]], output_columns: list[int]):
+    output_targets = [[data[i][output_column] for output_column in output_columns] for i in range(len(data))]
     for i in range(len(data)):
       self.feed_forward(data[i][:len(data[i])-1])
-      self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
-      self.backpropagate_and_update(learning_rate)
-    final_loss = self.calculate_loss(self.layer_results[::-1][0], data[i][::-1][0])
-    return f"final loss is {final_loss}"
-  
+      output_target = output_targets[i]
+      self.calculate_loss(self.layer_results[::-1][0], output_target)
+      self.update(learning_rate, output_target)
+    final_loss = self.calculate_loss(self.layer_results[::-1][0], output_targets[::-1][0])
+    print (f"final loss is {final_loss}")
+
+  def test(self, data: list[list[float]], output_columns: list[int]):
+    output_targets = [[data[i][output_column] for output_column in output_columns] for i in range(len(data))]
+    test_losses  = []
+    for i in range(len(data)):
+      self.feed_forward(data[i][:len(data[i])-1])
+      output_target = output_targets[i]
+      test_losses.append(self.calculate_loss(self.layer_results[::-1][0], output_target))
+    avg_loss = sum(test_losses)/len(test_losses)
+    print (f"Average loss is {avg_loss}")
+
   def train_network(self, learning_rate:float, data: list[list[float]], output_columns: list[int]):
     output_targets = [[data[i][output_column] for output_column in output_columns] for i in range(len(data))]
     for i in range(len(data)):

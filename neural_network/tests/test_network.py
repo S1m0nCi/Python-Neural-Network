@@ -25,7 +25,7 @@ class testNetwork(unittest.TestCase):
 
   def testTrain(self):
     network = Network()
-    network.train_network(
+    network.train(
       0.9,
       [
         [-2, -1, 1],
