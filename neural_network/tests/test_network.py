@@ -24,18 +24,21 @@ class testNetwork(unittest.TestCase):
       print (final_result)
 
   def testTrain(self):
-    network = Network()
-    network.train(
-      0.9,
-      [
-        [-2, -1, 1],
-        [25, 6, 0],
-        [17, 4, 0],
-        [-15, -6, 1]
-      ],
-      [2]
-      )
-      
+    with self.subTest("Default network training"):
+      network = Network()
+      network.train(
+        0.9,
+        [
+          [-2, -1, 1],
+          [25, 6, 0],
+          [17, 4, 0],
+          [-15, -6, 1]
+        ],
+        [2]
+        )
+      print(network)
+    with self.subTest("Default network with different weights"):
+      network = Network()    
 
 
 if __name__ == "__main__":

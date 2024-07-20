@@ -97,6 +97,7 @@ class Network:
     for i in range(len(self.nodes)):
       for j in range(len(self.nodes[i])):
         root_path = self.paths[i][j]
+        print (f"root path {root_path}")
         memo = form_zeros_array([len(lst) for lst in root_path])
         leads_to_output_nodes = root_path[::-1][0]
         weight_output_derivs = [
@@ -109,6 +110,8 @@ class Network:
           for m in range(len(weight_output_derivs))
                               ]
         bias_loss_deriv = sum([L_components[leads_to_output_nodes[k].position[1]]*bias_output_deriv[k] for k in range(len(leads_to_output_nodes))])
+        print (f"weight loss derivs {weight_loss_derivs}")
+        print (f"bias loss deriv {bias_loss_deriv}")
         self.node_changes[i][j] = NodeChange(weight_loss_derivs, bias_loss_deriv)
         self.nodes[i][j].applyChange(self.node_changes[i][j], learning_rate)
 
@@ -176,15 +179,20 @@ class Network:
         self.nodes[i][j].applyChange(self.node_changes[i][j], learning_rate)
   
   def sigmoid_chain_w(self, i, j, root_path, path_memo, weight_index):
+    print (f"i {i}")
+    print (f"path memo {path_memo}")
     # i denotes layer
     # j denotes node index in layer
     # write the self.nodes[i][j] as a product/sum of the derivatives that were before it
+    # if we are at an output node:
     if i == len(self.shape) - len(root_path):
-      return dsigmoid(self.nodes[i][j].activation_input)*self.nodes[i][j].inputs[weight_index]
+      path_memo[0][0] = dsigmoid(self.nodes[i][j].activation_input)*self.nodes[i][j].inputs[weight_index]
+      return path_memo[0][0]
     depends_on = []
     # check layer before:
     for k in range(len(root_path[i-1])):
-      if self.nodes[i][j] in self.paths[i-1][root_path[i-1][k].position[1]]:
+      print (f"path we are looking at {self.paths[i-1][root_path[i-1][k].position[1]]}")
+      if self.nodes[i][j] in self.paths[i-1][root_path[i-1][k].position[1]][1]:
         depends_on.append(k) # we know the layer is i-1
     # form list of dsigmoids: forming a list allows for easier memoisation implementation later if needed
     depends_on_ds = [
@@ -193,21 +201,22 @@ class Network:
     # form a list of the unknown (or memoised) weight partial derivatives
     depends_on_w = []
     for k in range(len(depends_on)): # we are not looking for the actual index
-      if path_memo[i-1][k] != 0:
-        depends_on_w.append(path_memo[i-1][k])
-      else:
-        depends_on_w.append(self.sigmoid_chain_w(i-1, depends_on[k], self.paths[i-1][depends_on[k]], path_memo, weight_index))
+      if path_memo[i-1][k] == 0.0:
+        print ("HERE")
+        path_memo[i-1][k] = self.sigmoid_chain_w(i-1, depends_on[k], self.paths[i-1][depends_on[k]], path_memo, weight_index)
+      depends_on_w.append(path_memo[i-1][k])
     return sum([depends_on_ds[k]*depends_on_w[k] for k in range(len(depends_on))])
 
   def sigmoid_chain_b(self, i, j, root_path, path_memo):
     # i denotes layer
     # j denotes node index in layer
     if i == len(self.shape) - len(root_path):
-      return dsigmoid(self.nodes[i][j].activation_input)
+      path_memo[0][0] = dsigmoid(self.nodes[i][j].activation_input)
+      return path_memo[0][0]
     depends_on = []
     # check layer before:
     for k in range(len(root_path[i-1])):
-      if j in self.paths[i-1][root_path[i-1][k].position[1]]:
+      if self.nodes[i][j] in self.paths[i-1][root_path[i-1][k].position[1]][1]:
         depends_on.append(k) # we know the layer is i-1
     # form list of dsigmoids: forming a list allows for easier memoisation implementation later if needed
     depends_on_ds = [
@@ -229,6 +238,7 @@ class Network:
   def train(self, learning_rate: float, data: list[list[float]], output_columns: list[int]):
     output_targets = [[data[i][output_column] for output_column in output_columns] for i in range(len(data))]
     for i in range(len(data)):
+      print (f"--------------------------- ROW {i+1} ---------------------------")
       self.feed_forward(data[i][:len(data[i])-1])
       output_target = output_targets[i]
       self.calculate_loss(self.layer_results[::-1][0], output_target)
